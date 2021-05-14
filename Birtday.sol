@@ -6,82 +6,56 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contr
 
 contract Birthday {
     
-    //library usage
     using Address for address payable;
     
-    //state variables
-    mapping (address => bool) private _members;
-    mapping(address => uint256) private _balances;
     address private _owner;
-    uint256 private _depositGift;
-    uint256 private _totalGift;
+    uint256 private _birthday;
+
+    event Offered(address indexed sender, uint256 value);
+
+    constructor(address owner_, uint256 delay_) {
+        _owner = owner_;
+        _birthday = block.timestamp + delay_ * 1 days;
+    }
     
-    //events
-    event SetMember(address indexed account, bool status);
-    event DeposeGift(address indexed account, uint256 amount);
-    
-    //constructor
-    
-    //modifier
-    modifier onlyOwner() {
-        require(msg.sender == _owner, "Birthday :  only Owner can call this function");
+    modifier onlyOwner {
+        require(msg.sender == _owner, "Birthday: Sorry, this is not your birthday!");
         _;
     }
     
-    //function : 
-    //  receive, 
-    
-    //  fallback, 
-    
-    //  external,
-    
-    //  public,
-    
-    function withdrawAll() public onlyOwner {
-        uint256 amount = _totalGift;
-        _withdraw(msg.sender, amount);
-        
+    modifier onTime {
+        require(_birthday <= block.timestamp, "Birthday: Not your B-Day yet!");
+        _;
     }
     
-    function setMembers(address account) public {
-        _members[account] = !_members[account];
-        emit SetMember(account, _members[account]);
+    modifier notOwner {
+        require(msg.sender != _owner, "Birthday: You are not allowed to use this functionality!");
+        _;
     }
     
-    function hasAGift(address account, uint256 amount) public {
-        amount += _depositGift;
-        _depositGift += _totalGift;
-        emit DeposeGift(account, amount);
+    function offer() external payable {
+        emit Offered(msg.sender, msg.value);
     }
     
-    function balanceOf(address account) public view returns (uint256) {
-        return _balances[account];
+    receive() external payable {
+        emit Offered(msg.sender, msg.value);
     }
     
-    function owner() public view returns(address) {
-        require (_owner ==  0x18623E57807E33724d8ee461e30F79b559A780b6, "Birthday : you are not the owner");
-        return _owner;
+    
+    function viewPresent() public view notOwner returns (uint256) {
+        return address(this).balance;
     }
     
-    function isMembers(address account) public  view returns (bool) {
-        return _members[account];
+    function getPresent() public onlyOwner onTime {
+        payable(msg.sender).sendValue(address(this).balance);
     }
     
-    function depositGift() public view returns (uint256) {
-        return _depositGift;
+    function getBDay() public view returns (uint256) {
+        return _birthday; 
     }
     
-    function totalGift() public view returns (uint256) {
-        return _totalGift;
-    }
-    
-    //  internal, 
-    
-    //  private.
-    function _withdraw(address recipient, uint256 amount) private {
-        require(_balances[recipient] > 0,"Birthday : you can not withdraw 0 ETH.");
-        payable(msg.sender).sendValue(amount);
-        
-        
+    function getRemainingTime() public view returns (uint256) {
+        require(_birthday >= block.timestamp, "Birthday: Birthday has past.");
+        return _birthday - block.timestamp; 
     }
 }
